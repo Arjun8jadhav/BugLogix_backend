@@ -30,7 +30,7 @@ export const Show=async (req, res) => {
        const { page = 1, perPage = 10 } = req.query;
        const month= req.query.month || 3;
         const monthNumber = parseInt(month); 
-        const skip = (page - 1) + perPage;
+        const skip = (page-1)*10;
         console.log(monthNumber);
         const transactions = await rox.aggregate([
             {
@@ -48,7 +48,7 @@ export const Show=async (req, res) => {
                 $limit: parseInt(perPage)
             }
         ]).exec();
-
+        
         res.status(200).json(transactions);
 
     } catch (error) {

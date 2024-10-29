@@ -1,76 +1,103 @@
 import express from "express";
-import rox from "./model/products.js";
-import mongoose from "mongoose";
-import axios from "axios";
 import connectdb from "./db/connect.js";
+import Task from "./model/products.js";
 import cors from "cors";
-import { Bar, Sale_amount, Show, Start, Category } from "./controller/controller.js";
-const router = express.Router();
+
 const app = express();
 app.use(cors());
-app.get('/', (req, res) => {
-    res.status(200).json({ message: "hello1" })
-})
-app.get('/start', Start);
-app.get('/show', Show);
-app.get('/sale_amount', Sale_amount);
-app.get('/bar_chart', Bar);
-app.get('/category', Category);
-app.get('/result', async (req, res) => {
-    try {
-        await connectdb();
-        const { month = 3 } = req.query;
-        const monthNumber = parseInt(month);
-        const sale_result = await rox.aggregate([
-            {
-                $addFields: {
-                    month: { $month: '$dateOfSale' }
-                }
-            },
-            {
-                $match: {
-                    $and: [
-                        { month: monthNumber },
-                        { sold: true }
-                    ]
-                }
-            },
-            {
-                $group: {
-                    _id: null,
-                    totalAmount: { $sum: '$price' }
-                }
-            }
-        ]).exec();
-        const cat_result=await rox.aggregate([
-            {
-                $addFields: {
-                    month: { $month: '$dateOfSale' }
-                }
-            },
-            {
-                $match: {
-                    $and: [
-                        { month: monthNumber },
-                        { sold: true }
-                    ]
-                }
-            },
-            {
-                $group: {
-                    _id: '$category',
-                    count: { $sum: 1 }
-                }
-            }
-        ]).exec();
-        console.log(sale_result);
-        res.status(200).json({ sale: sale_result ,cat:cat_result})
-    }
-    catch (err) {
-        res.status(500).json("something went wrong");
-    }
+app.use(express.json()); // This will parse incoming JSON requests
 
-})
+// Connect to MongoDB once at startup, not on every request
+connectdb();
+
+app.get('/', (req, res) => {
+    res.status(200).json({ message: "hello1" });
+});
+
+app.post('/create', async (req, res) => {
+    try {
+        const { title, description, priority, status, assignee, dueDate } = req.body;
+        const newTask = new Task({
+            title,
+            description,
+            priority,
+            status,
+            assignee,
+            dueDate
+        });
+        const savedTask = await newTask.save();
+        res.status(201).json(savedTask);
+    } catch (error) {
+        console.error("Error creating task:", error);
+        res.status(500).json({ message: "Failed to create task", error });
+    }
+});
+app.get('/tasks', async (req, res) => {
+    try {
+        const { page = 1, limit = 10, priority, status } = req.query;
+        const startIndex = (page - 1) * limit;
+        
+        // Build a filter object based on the provided query parameters
+        let filter = {};
+        if (priority) filter.priority = priority;
+        if (status) filter.status = status;
+
+        
+        const tasks = await Task.find(filter)
+            .skip(startIndex)
+            .limit(parseInt(limit))
+            .sort({ priority: 1 });
+
+        res.status(200).json(tasks);
+    } catch (error) {
+        console.error("Error fetching tasks:", error);
+        res.status(500).json({ message: "Failed to fetch tasks", error });
+    }
+});
+
+// Delete a specific task by ID
+app.delete('/tasks/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const deletedTask = await Task.findByIdAndDelete(id);
+        
+        if (!deletedTask) {
+            return res.status(404).json({ message: "Task not found" });
+        }
+
+        res.status(200).json({ message: "Task deleted successfully" });
+    } catch (error) {
+        console.error("Error deleting task:", error);
+        res.status(500).json({ message: "Failed to delete task", error });
+    }
+});
+// Update a specific task by ID
+app.put('/tasks/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, description, priority, status, assignee, dueDate } = req.body;
+
+        const updatedTask = await Task.findByIdAndUpdate(id, {
+            title,
+            description,
+            priority,
+            status,
+            assignee,
+            dueDate
+        }, { new: true }); 
+
+        if (!updatedTask) {
+            return res.status(404).json({ message: "Task not found" });
+        }
+
+        res.status(200).json(updatedTask);
+    } catch (error) {
+        console.error("Error updating task:", error);
+        res.status(500).json({ message: "Failed to update task", error });
+    }
+});
+
+
 app.listen(8800, () => {
-    console.log("server started")
+    console.log("Server started on port 8800");
 });

@@ -1,34 +1,37 @@
 import mongoose from "mongoose";
 
-const ProductSchema=new mongoose.Schema({
+const TaskSchema = new mongoose.Schema({
     title: {
         type: String,
-        required: true
-    },
-    price: {
-        type: Number,
         required: true
     },
     description: {
         type: String,
         required: true
     },
-    category: {
+    priority: {
         type: String,
         required: true
     },
-    image: {
+    status: {
         type: String,
         required: true
     },
-    sold: {
-        type: Boolean,
+    assignee: {
+        type: String,
         required: true
     },
-    dateOfSale: {
-        type: Date,
-        default: Date.now()
-    }
-})
-const rox = mongoose.model('Roxiler', ProductSchema);
-export default rox;
+    dueDate: {
+        type: Date
+    },
+    timeLogs: [
+        {
+            timeSpent: { type: Number, required: true }, // in minutes
+            loggedAt: { type: Date, default: Date.now },
+            user: { type: String } // optional: log who logged the time
+        }
+    ]
+});
+
+const Task = mongoose.model('Task', TaskSchema);
+export default Task;
