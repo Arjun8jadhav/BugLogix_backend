@@ -37,7 +37,7 @@ app.get('/tasks', async (req, res) => {
         const { page = 1, limit = 10, priority, status } = req.query;
         const startIndex = (page - 1) * limit;
         
-        // Build a filter object based on the provided query parameters
+        
         let filter = {};
         if (priority) filter.priority = priority;
         if (status) filter.status = status;
@@ -52,6 +52,21 @@ app.get('/tasks', async (req, res) => {
     } catch (error) {
         console.error("Error fetching tasks:", error);
         res.status(500).json({ message: "Failed to fetch tasks", error });
+    }
+});
+app.get('/tasks/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const task = await Task.findById(id);
+        
+        if (!task) {
+            return res.status(404).json({ message: "Task not found" });
+        }
+
+        res.status(200).json(task);
+    } catch (error) {
+        console.error("Error fetching task:", error);
+        res.status(500).json({ message: "Failed to fetch task", error });
     }
 });
 
